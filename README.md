@@ -9,6 +9,10 @@ source ENV/bin/activate
 pip install -r requirements.txt
 ```
 
+Set your local settings
+```
+cp settings.template.py settings.py
+```
 ## Run (for development)
 ```
 python app.py
@@ -16,4 +20,4 @@ python app.py
 
 ## Utilities
 ### /add-alt-call
-Scann in an item, then scan in an alternative callnumber. scf-utils will update the alternative call number and bring you back to the beginning of the process.
+Scan in an item, then scan in an alternative callnumber. scf-utils will update the alternative call number and bring you back to the beginning of the process.
