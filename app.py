@@ -71,13 +71,16 @@ def get_new_call():
 
 @app.route('/add-alt-call/update', methods=['POST'])
 def update_alt_call():
+    # collect barcodes from form on previous page
     barcode = request.form['barcode']
     new_alt_call = request.form['alt-call'] 
+    # try to find the item in alma or return an error
     try:
         item = _alma_get(app.config['API_HOST'] + app.config['GET_BY_BARCODE'].format(barcode))
     except requests.exceptions.RequestException as e:
         return e.args[0]
     
+    # parse the item as XML
     root = ET.fromstring(item)
     # update alt call
     root.find('.//item_data/alternative_call_number').text = new_alt_call
@@ -87,11 +90,13 @@ def update_alt_call():
     ac_type.text = "8"
     item_link = root.attrib['link']
     updated_item = ET.tostring(root, encoding="utf-8")
+    #try to post the modified item record back up to Alma or return an error
     try:
         _alma_put(item_link, payload=updated_item)       
     except requests.exceptions.RequestException as e:
         return e.args[0]
 
+    # save the result of the post transaction as a message to be displayed on the next page
     flash("Changed alt call for item {} to {}".format(barcode, new_alt_call))
     return redirect(url_for('add_alt_call'))
 
