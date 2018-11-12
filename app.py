@@ -62,12 +62,12 @@ def logout():
 
 @app.route('/add-alt-call')
 def add_alt_call():
-    return render_template('find_item.html')
+    return render_template('find_alt_call_item.html')
 
 @app.route('/add-alt-call/add-call', methods=['POST'])
 def get_new_call():
     barcode = request.form['barcode']
-    return render_template('update_item.html', barcode=barcode)
+    return render_template('update_alt_call_item.html', barcode=barcode)
 
 @app.route('/add-alt-call/update', methods=['POST'])
 def update_alt_call():
@@ -88,9 +88,10 @@ def update_alt_call():
     ac_type = root.find('.//item_data/alternative_call_number_type')
     ac_type.attrib['desc'] = "Other scheme"
     ac_type.text = "8"
+    #try to post the modified item record back up to Alma or return an error
     item_link = root.attrib['link']
     updated_item = ET.tostring(root, encoding="utf-8")
-    #try to post the modified item record back up to Alma or return an error
+
     try:
         _alma_put(item_link, payload=updated_item)       
     except requests.exceptions.RequestException as e:
@@ -99,8 +100,46 @@ def update_alt_call():
     # save the result of the post transaction as a message to be displayed on the next page
     flash("Changed alt call for item {} to {}".format(barcode, new_alt_call))
     return redirect(url_for('add_alt_call'))
+# begin add internal note functions
+@app.route('/add-int-note')
+def add_int_note():
+    return render_template('find_int_note_item.html')
 
+@app.route('/add-int-note/add-note', methods=['POST'])
+def get_new_note():
+    barcode = request.form['barcode']
+    return render_template('update_int_note_item.html', barcode=barcode)
+
+@app.route('/add-int-note/update', methods=['POST'])
+def update_int_note():
+    # collect barcodes from form on previous page
+    barcode = request.form['barcode']
+    new_int_note = request.form['int-note'] 
+    # try to find the item in alma or return an error
+    try:
+        item = _alma_get(app.config['API_HOST'] + app.config['GET_BY_BARCODE'].format(barcode))
+    except requests.exceptions.RequestException as e:
+        return e.args[0]
+    
+    # parse the item as XML
+    root = ET.fromstring(item)
+    # update int note
+    root.find('.//item_data/internal_note_1').text = new_int_note
+    #try to post the modified item record back up to Alma or return an error
+    item_link = root.attrib['link']
+    updated_item = ET.tostring(root, encoding="utf-8")
+
+    try:
+        _alma_put(item_link, payload=updated_item)       
+    except requests.exceptions.RequestException as e:
+        return e.args[0]
+
+    # save the result of the post transaction as a message to be displayed on the next page
+    flash("Changed internal note 1 for item {} to {}".format(barcode, new_int_note))
+    return redirect(url_for('add_int_note'))
 @app.route('/test/<item>')
+
+#end internal note functions
 def fetch(item):
     record = _alma_get(app.config['API_HOST'] + app.config['GET_BY_BARCODE'].format(item))
     return record

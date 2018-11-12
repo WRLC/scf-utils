@@ -1,5 +1,6 @@
 __pycache__
 *.pyc
+app.py.old
 ENV
 CLEANENV
 settings.py
