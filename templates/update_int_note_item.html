@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Update Internal Note 1</h1>
+    <h2>New internal note</h2>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <span class=flashes>{{ message }}</span>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    <span class="intructions">Will try to update internal note on item: {{ barcode }}</span>
+    <form id="lookup-item" action="{{ url_for('update_int_note') }}" method="post">
+        <input type="hidden" id="barcode" name="barcode" value="{{ barcode }}">
+	<div class="form-group row">
+            <label for="int-note" class="col-sm-2 col-form-label">Enter new int note</label>
+	    <input name="int-note" id="int-note" type="text" autofocus>
+	</div>
+	<div class="form-group">
+	    <button type="submit" class="btn btn-primary">Update</button>
+	</div>
+    </form>
+{% endblock %}  
