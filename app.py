@@ -2,6 +2,7 @@ from flask import Flask, flash, redirect, request, render_template, session, url
 from functools import wraps
 import json
 import jwt
+import logging
 import requests
 import settings
 import xml.etree.ElementTree as ET
@@ -14,6 +15,7 @@ app.secret_key = settings.SESSION_KEY
 app.config['API_HOST'] = settings.API_HOST
 app.config['API_KEY'] = settings.API_KEY
 app.config['GET_BY_BARCODE'] = settings.GET_BY_BARCODE
+app.config['LOG_FILE'] = settings.LOG_FILE
 app.config['SHARED_SECRET'] = settings.SHARED_SECRET
 
 # xpaths for fields that need updating
@@ -21,8 +23,16 @@ app.config['XPATH'] = {
     'alt_call' : './/item_data/alternative_call_number',
     'alt_call_type' : './/item_data/alternative_call_number_type',
     'int_note' : './/item_data/internal_note_1',
+    'mms_id' : './/mms_id'
 }
 
+# audit log
+audit_log = logging.getLogger('audit')
+audit_log.setLevel(logging.INFO)
+file_handler = logging.FileHandler(app.config['LOG_FILE'])
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(logging.Formatter('%(asctime)s\t%(message)s'))
+audit_log.addHandler(file_handler)
 
 # login wrapper
 def auth_required(f):
@@ -189,14 +199,15 @@ def _update_field(item_record, field, new_val):
     field name to be updated (must also be configured in XPATH
     setting), and the new value the field should be updated to.
     '''
-    xpath = app.config['XPATH'][field]
     item = item_record
     try:
         root = ET.fromstring(item)
     except ET.ParseError as e:
         return e.args[0]
+    # get id
+    mms_id = root.find(app.config['XPATH']['mms_id']).text
     # update field
-    root.find(xpath).text = new_val
+    root.find(app.config['XPATH'][field]).text = new_val
     # if field is alt call, enforce alt call type
     if field == 'alt_call':
         try:
@@ -209,7 +220,12 @@ def _update_field(item_record, field, new_val):
     updated_item = ET.tostring(root, encoding="utf-8")
 
     try:
-        return _alma_put(item_link, payload=updated_item)
+        result = _alma_put(item_link, payload=updated_item)
+        audit_log.info('{operator}\t{mms_id}\t{type}\t{value}'.format(operator="default",
+                                                                mms_id=mms_id,
+                                                                type=field,
+                                                                value=new_val))
+        return result
     except requests.exceptions.RequestException as e:
         return e.args[0]
 
