@@ -16,6 +16,14 @@ app.config['API_KEY'] = settings.API_KEY
 app.config['GET_BY_BARCODE'] = settings.GET_BY_BARCODE
 app.config['SHARED_SECRET'] = settings.SHARED_SECRET
 
+# xpaths for fields that need updating
+app.config['XPATH'] = {
+    'alt_call' : './/item_data/alternative_call_number',
+    'alt_call_type' : './/item_data/alternative_call_number_type',
+    'int_note' : './/item_data/internal_note_1',
+}
+
+
 # login wrapper
 def auth_required(f):
     @wraps(f)
@@ -60,86 +68,83 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-@app.route('/add-alt-call')
-def add_alt_call():
-    return render_template('find_alt_call_item.html')
-
-@app.route('/add-alt-call/add-call', methods=['POST'])
-def get_new_call():
-    barcode = request.form['barcode']
-    return render_template('update_alt_call_item.html', barcode=barcode)
-
-@app.route('/add-alt-call/update', methods=['POST'])
+@app.route('/update-field/alt-call')
 def update_alt_call():
-    # collect barcodes from form on previous page
+    field_name = 'Alternative Call Number'
+    return render_template('find_item.html',
+                           get_input_function='get_alt_call_input',
+                           field_name=field_name)
+
+@app.route('/update-field/alt-call/get-input', methods=['POST'])
+def get_alt_call_input():
+    field_name = 'Alternative Call Number' 
     barcode = request.form['barcode']
-    new_alt_call = request.form['alt-call'] 
     # try to find the item in alma or return an error
     try:
         item = _alma_get(app.config['API_HOST'] + app.config['GET_BY_BARCODE'].format(barcode))
     except requests.exceptions.RequestException as e:
         return e.args[0]
-    
-    # parse the item as XML
-    root = ET.fromstring(item)
-    # update alt call
-    root.find('.//item_data/alternative_call_number').text = new_alt_call
-    # enforce alt call type
-    ac_type = root.find('.//item_data/alternative_call_number_type')
-    ac_type.attrib['desc'] = "Other scheme"
-    ac_type.text = "8"
-    #try to post the modified item record back up to Alma or return an error
-    item_link = root.attrib['link']
-    updated_item = ET.tostring(root, encoding="utf-8")
+    item_record = item.decode(encoding='utf-8')
+    return render_template('get_input.html', 
+														barcode=barcode,
+														field_name=field_name,
+                                                        update_function='update_alt_call_field',
+														item=item_record)
 
-    try:
-        _alma_put(item_link, payload=updated_item)       
-    except requests.exceptions.RequestException as e:
-        return e.args[0]
-
-    # save the result of the post transaction as a message to be displayed on the next page
-    flash("Changed alt call for item {} to {}".format(barcode, new_alt_call))
-    return redirect(url_for('add_alt_call'))
-# begin add internal note functions
-@app.route('/add-int-note')
-def add_int_note():
-    return render_template('find_int_note_item.html')
-
-@app.route('/add-int-note/add-note', methods=['POST'])
-def get_new_note():
+@app.route('/update-field/alt-call/update', methods=['POST'])
+def update_alt_call_field():
+    field = 'alt_call'
     barcode = request.form['barcode']
-    return render_template('update_int_note_item.html', barcode=barcode)
+    new_val = request.form['new_val']
+    item_record = request.form['item-record']
 
-@app.route('/add-int-note/update', methods=['POST'])
+    updated_result =  _update_field(item_record, field, new_val)
+    # save the result of the post transaction as a message to be displayed on the next page
+    if updated_result:
+        flash("Changed {} for {} to {}".format(field, barcode, new_val))
+        return redirect(url_for('update_alt_call'))
+    else:
+        return updated_result
+
+# internal note update
+@app.route('/update-field/int-note')
 def update_int_note():
-    # collect barcodes from form on previous page
+    field_name = 'Internal Note'
+    return render_template('find_item.html',
+                           get_input_function='get_int_note_input',
+                           field_name=field_name)
+
+@app.route('/update-field/int-note/get-input', methods=['POST'])
+def get_int_note_input():
+    field_name = 'Internal Note' 
     barcode = request.form['barcode']
-    new_int_note = request.form['int-note'] 
     # try to find the item in alma or return an error
     try:
         item = _alma_get(app.config['API_HOST'] + app.config['GET_BY_BARCODE'].format(barcode))
     except requests.exceptions.RequestException as e:
         return e.args[0]
-    
-    # parse the item as XML
-    root = ET.fromstring(item)
-    # update int note
-    root.find('.//item_data/internal_note_1').text = new_int_note
-    #try to post the modified item record back up to Alma or return an error
-    item_link = root.attrib['link']
-    updated_item = ET.tostring(root, encoding="utf-8")
+    item_record = item.decode(encoding='utf-8')
+    return render_template('get_input.html', 
+                                                        barcode=barcode,
+                                                        field_name=field_name,
+                                                        update_function='update_int_note_field',
+                                                        item=item_record)
 
-    try:
-        _alma_put(item_link, payload=updated_item)       
-    except requests.exceptions.RequestException as e:
-        return e.args[0]
+@app.route('/update-field/int-note/update', methods=['POST'])
+def update_int_note_field():
+    field = 'int_note'
+    barcode = request.form['barcode']
+    new_val = request.form['new_val']
+    item_record = request.form['item-record']
 
+    updated_result =  _update_field(item_record, field, new_val)
     # save the result of the post transaction as a message to be displayed on the next page
-    flash("Changed internal note 1 for item {} to {}".format(barcode, new_int_note))
-    return redirect(url_for('add_int_note'))
-@app.route('/test/<item>')
+    if updated_result:
+        flash("Changed {} for {} to {}".format(field, barcode, new_val))
+        return redirect(url_for('update_int_note'))
+    else:
+        return updated_result
 
-#end internal note functions
 def fetch(item):
     record = _alma_get(app.config['API_HOST'] + app.config['GET_BY_BARCODE'].format(item))
     return record
@@ -177,6 +182,43 @@ def _alma_put(resource, payload=None, params=None, fmt='xml'):
         return r.json()
     else:
         return r.content
+
+def _update_field(item_record, field, new_val):
+    '''
+    updates a feild in marcxml record pass in record as xml,
+    field name to be updated (must also be configured in XPATH
+    setting), and the new value the field should be updated to.
+    '''
+    xpath = app.config['XPATH'][field]
+    item = item_record
+    try:
+        root = ET.fromstring(item)
+    except ET.ParseError as e:
+        return e.args[0]
+    # update field
+    root.find(xpath).text = new_val
+    # if field is alt call, enforce alt call type
+    if field == 'alt_call':
+        try:
+            enforced = _enforce_call_type(root)
+        except:
+            return "could not enforce call type, aborting"
+
+    #try to post the modified item record back up to Alma or return an error
+    item_link = root.attrib['link']
+    updated_item = ET.tostring(root, encoding="utf-8")
+
+    try:
+        return _alma_put(item_link, payload=updated_item)
+    except requests.exceptions.RequestException as e:
+        return e.args[0]
+
+
+def _enforce_call_type(item_root):
+    ac_type = item_root.find(app.config['XPATH']['alt_call_type'])
+    ac_type.attrib['desc'] = "Other scheme"
+    ac_type.text = "8"
+
 
 # run this app
 if __name__ == "__main__":
