@@ -135,10 +135,10 @@ def get_int_note_input():
         return e.args[0]
     item_record = item.decode(encoding='utf-8')
     return render_template('get_input.html', 
-                                                        barcode=barcode,
-                                                        field_name=field_name,
-                                                        update_function='update_int_note_field',
-                                                        item=item_record)
+                            barcode=barcode,
+                            field_name=field_name,
+                            update_function='update_int_note_field',
+                            item=item_record)
 
 @app.route('/update-field/int-note/update', methods=['POST'])
 def update_int_note_field():
