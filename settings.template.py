@@ -6,3 +6,4 @@ GET_BY_BARCODE = '/almaws/v1/items?item_barcode={}'
 SHARED_SECRET = 'shared secret for jwt'
 # for sessions
 SESSION_KEY = 'random key here'
+LOGIN_PROVIDER = 'login provider url'
