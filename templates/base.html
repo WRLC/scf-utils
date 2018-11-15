@@ -13,12 +13,24 @@
                     <li class="nav-item active">
        		        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
 		    </li>
+                    {% if 'username' in session: %}
+                    <li class="nav-item">
+       		        <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+		    </li>
+                    {% else: %}
+                    <li class="nav-item">
+       		        <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+		    </li>
+                    {% endif %}
 		</ul>
 	    </div>
 	</nav>
     </header>
     <div class="container">
 	{% block content %}{% endblock %}		  
+        {% if 'username' in session: %}
+            <span class="text-muted">Logged in as: {{ session['display_name'] }}</span>
+        {% endif %}
     </div>
 <script
   src="https://code.jquery.com/jquery-3.3.1.min.js"

@@ -1,4 +1,4 @@
-from flask import Flask, flash, redirect, request, render_template, session, url_for
+from flask import Flask, flash, make_response, redirect, request, render_template, session, url_for
 from functools import wraps
 import json
 import jwt
@@ -16,6 +16,7 @@ app.config['API_HOST'] = settings.API_HOST
 app.config['API_KEY'] = settings.API_KEY
 app.config['GET_BY_BARCODE'] = settings.GET_BY_BARCODE
 app.config['LOG_FILE'] = settings.LOG_FILE
+app.config['LOGIN_PROVIDER'] = settings.LOGIN_PROVIDER
 app.config['SHARED_SECRET'] = settings.SHARED_SECRET
 
 # xpaths for fields that need updating
@@ -39,22 +40,20 @@ def auth_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not 'username' in session:
-            abort(403)
+            return redirect(app.config['LOGIN_PROVIDER'])
         else:
             return f(*args, **kwargs)
     return decorated
 
 # routes and controllers
 @app.route('/')
+@auth_required
 def index():
     return render_template("index.html")
 
 @app.route('/login')
 def login():
-    if 'username' in session:
-        return redirect(url_for('index'))
-    else:
-        return render_template('login.html')
+    return redirect(app.config['login_provider'])
 
 @app.route('/login/n', methods=['GET'])
 def new_login():
@@ -62,7 +61,7 @@ def new_login():
     if 'wrt' in request.cookies:
         encoded_token =  request.cookies['wrt']
         user_data = jwt.decode(encoded_token, app.config['SHARED_SECRET'], algorithms=['HS256'])
-        if 'fines_payment' in user_data['authorizations']:
+        if 'scf_utils' in user_data['authorizations']:
             session['username'] = user_data['primary_id']
             session['user_home'] = user_data['inst']
             session['display_name'] = user_data['full_name']
@@ -73,12 +72,12 @@ def new_login():
         return "no login cookie"
 
 @app.route('/logout')
-@auth_required
 def logout():
     session.clear()
-    return redirect(url_for('login'))
+    return render_template('logout.html')
 
 @app.route('/update-field/alt-call')
+@auth_required
 def update_alt_call():
     field_name = 'Alternative Call Number'
     return render_template('find_item.html',
@@ -86,6 +85,7 @@ def update_alt_call():
                            field_name=field_name)
 
 @app.route('/update-field/alt-call/get-input', methods=['POST'])
+@auth_required
 def get_alt_call_input():
     field_name = 'Alternative Call Number' 
     barcode = request.form['barcode']
@@ -102,6 +102,7 @@ def get_alt_call_input():
 														item=item_record)
 
 @app.route('/update-field/alt-call/update', methods=['POST'])
+@auth_required
 def update_alt_call_field():
     field = 'alt_call'
     barcode = request.form['barcode']
@@ -118,6 +119,7 @@ def update_alt_call_field():
 
 # internal note update
 @app.route('/update-field/int-note')
+@auth_required
 def update_int_note():
     field_name = 'Internal Note'
     return render_template('find_item.html',
@@ -125,6 +127,7 @@ def update_int_note():
                            field_name=field_name)
 
 @app.route('/update-field/int-note/get-input', methods=['POST'])
+@auth_required
 def get_int_note_input():
     field_name = 'Internal Note' 
     barcode = request.form['barcode']
@@ -141,6 +144,7 @@ def get_int_note_input():
                             item=item_record)
 
 @app.route('/update-field/int-note/update', methods=['POST'])
+@auth_required
 def update_int_note_field():
     field = 'int_note'
     barcode = request.form['barcode']
@@ -221,7 +225,7 @@ def _update_field(item_record, field, new_val):
 
     try:
         result = _alma_put(item_link, payload=updated_item)
-        audit_log.info('{operator}\t{mms_id}\t{type}\t{value}'.format(operator="default",
+        audit_log.info('{operator}\t{mms_id}\t{type}\t{value}'.format(operator=session['username'],
                                                                 mms_id=mms_id,
                                                                 type=field,
                                                                 value=new_val))
