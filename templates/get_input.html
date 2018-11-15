@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Update {{ field_name }}</h1>
+    <h2>Enter new {{ field_name }}</h2>
+    <form id="lookup-item" action="{{ url_for(update_function) }}" method="post">
+        <input type="hidden" id="barcode" name="barcode" value="{{ barcode }}">
+        <input type="hidden" id="item-record" name="item-record" value="{{ item }}">
+	<div class="form-group row">
+            <label for="alt-call" class="col-sm-2 col-form-label">Enter new alt call</label>
+	    <input name="new_val" id="new_val" type="text" autofocus>
+	</div>
+	<div class="form-group">
+	    <button type="submit" class="btn btn-primary">Update</button>
+	</div>
+    </form>
+  <pre>{{ item }}</pre>
+{% endblock %}  
