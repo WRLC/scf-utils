@@ -23,8 +23,10 @@ app.config['SHARED_SECRET'] = settings.SHARED_SECRET
 app.config['XPATH'] = {
     'alt_call' : './/item_data/alternative_call_number',
     'alt_call_type' : './/item_data/alternative_call_number_type',
+    'barcode' : './/item_data/barcode',
     'int_note' : './/item_data/internal_note_1',
-    'mms_id' : './/mms_id'
+    'mms_id' : './/mms_id',
+    'title' : './/title',
 }
 
 # audit log
@@ -95,11 +97,20 @@ def get_alt_call_input():
     except requests.exceptions.RequestException as e:
         return e.args[0]
     item_record = item.decode(encoding='utf-8')
+    item_root = _parse_item(item_record)
+    # grab some fields from retrieved item to show operator
+    try:
+        retrieved_barcode = item_root.find(app.config['XPATH']['barcode']).text
+        retrieved_title = item_root.find(app.config['XPATH']['title']).text.strip('/')
+    except:
+        return abort(500)
     return render_template('get_input.html', 
-														barcode=barcode,
-														field_name=field_name,
-                                                        update_function='update_alt_call_field',
-														item=item_record)
+                           barcode=barcode,
+                           field_name=field_name,
+                           item=item_record,
+                           update_function='update_alt_call_field',
+                           retrieved_barcode=retrieved_barcode,
+                           retrieved_title=retrieved_title)
 
 @app.route('/update-field/alt-call/update', methods=['POST'])
 @auth_required
@@ -137,11 +148,20 @@ def get_int_note_input():
     except requests.exceptions.RequestException as e:
         return e.args[0]
     item_record = item.decode(encoding='utf-8')
+    item_root = _parse_item(item_record)
+    # grab some fields from retrieved item to show operator
+    try:
+        retrieved_barcode = item_root.find(app.config['XPATH']['barcode']).text
+        retrieved_title = item_root.find(app.config['XPATH']['title']).text
+    except:
+        abort(500)
     return render_template('get_input.html', 
-                            barcode=barcode,
-                            field_name=field_name,
-                            update_function='update_int_note_field',
-                            item=item_record)
+                           barcode=barcode,
+                           field_name=field_name,
+                           item=item_record,
+                           update_function='update_int_note_field',
+                           retrieved_barcode=retrieved_barcode,
+                           retrieved_title=retrieved_title)
 
 @app.route('/update-field/int-note/update', methods=['POST'])
 @auth_required
@@ -197,31 +217,38 @@ def _alma_put(resource, payload=None, params=None, fmt='xml'):
     else:
         return r.content
 
+def _parse_item(item_record):
+    '''
+    Returns Element tree from string
+    '''
+    try:
+        root = ET.fromstring(item_record)
+        return root
+    except ET.ParseError as e:
+        return e.args[0]
+    
+
 def _update_field(item_record, field, new_val):
     '''
     updates a feild in marcxml record pass in record as xml,
     field name to be updated (must also be configured in XPATH
     setting), and the new value the field should be updated to.
     '''
-    item = item_record
-    try:
-        root = ET.fromstring(item)
-    except ET.ParseError as e:
-        return e.args[0]
+    item_root = _parse_item(item_record)
     # get id
-    mms_id = root.find(app.config['XPATH']['mms_id']).text
+    mms_id = item_root.find(app.config['XPATH']['mms_id']).text
     # update field
-    root.find(app.config['XPATH'][field]).text = new_val
+    item_root.find(app.config['XPATH'][field]).text = new_val
     # if field is alt call, enforce alt call type
     if field == 'alt_call':
         try:
-            enforced = _enforce_call_type(root)
+            enforced = _enforce_call_type(item_root)
         except:
             return "could not enforce call type, aborting"
 
     #try to post the modified item record back up to Alma or return an error
-    item_link = root.attrib['link']
-    updated_item = ET.tostring(root, encoding="utf-8")
+    item_link = item_root.attrib['link']
+    updated_item = ET.tostring(item_root, encoding="utf-8")
 
     try:
         result = _alma_put(item_link, payload=updated_item)
