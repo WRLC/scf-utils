@@ -27,7 +27,16 @@
 	</nav>
     </header>
     <div class="container">
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-success mt-3" role="alert">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
 	{% block content %}{% endblock %}		  
+
         {% if 'username' in session: %}
             <span class="text-muted">Logged in as: {{ session['display_name'] }}</span>
         {% endif %}
