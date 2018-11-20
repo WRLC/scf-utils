@@ -3,13 +3,6 @@
 {% block content %}
     <h1>Update {{ field_name }}</h1>
     <h2>Enter Item Barcode</h2>
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        {% for message in messages %}
-          <span class=flashes>{{ message }}</span>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
     <form id="lookup-item" action="{{ url_for(get_input_function) }}" method="post">
 	<div class="form-group row">
             <label for="barcode" class="col-sm-2 col-form-label">Barcode</label>
