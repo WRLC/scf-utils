@@ -15,7 +15,7 @@ cp settings.template.py settings.py
 ```
 ## Run (for development)
 ```
-python app.py
+FLAS_ENV=development python app.py
 ```
 
 ## Utilities

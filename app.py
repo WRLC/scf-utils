@@ -3,6 +3,7 @@ from functools import wraps
 import json
 import jwt
 import logging
+import os
 import requests
 import settings
 import xml.etree.ElementTree as ET
@@ -41,13 +42,22 @@ audit_log.addHandler(file_handler)
 def auth_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if not 'username' in session:
-            return redirect(app.config['LOGIN_PROVIDER'])
-        else:
+        if 'username' in session:
             return f(*args, **kwargs)
+        elif app.config['ENV'] == 'development':
+            session['username'] = 'devuser'
+            session['user_home'] = 'dev'
+            session['display_name'] = 'development user'
+            return f(*args, **kwargs)
+        else:
+            return redirect(app.config['LOGIN_PROVIDER'])
     return decorated
 
 # routes and controllers
+@app.route('/test')
+def test_route():
+    return str(app.config['ENV'])
+
 @app.route('/')
 @auth_required
 def index():
