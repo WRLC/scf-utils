@@ -14,11 +14,12 @@ app = Flask(__name__)
 #configuration from settings.py
 app.secret_key = settings.SESSION_KEY
 app.config['API_HOST'] = settings.API_HOST
-app.config['API_KEY'] = settings.API_KEY
+app.config['AUTHORIZED_GROUP'] = settings.AUTHORIZED_GROUP
+app.config['BIBS_API_KEY'] = settings.BIBS_API_KEY
+app.config['USERS_API_KEY'] = settings.USERS_API_KEY
 app.config['GET_BY_BARCODE'] = settings.GET_BY_BARCODE
+app.config['USERS'] = settings.USERS
 app.config['LOG_FILE'] = settings.LOG_FILE
-app.config['LOGIN_PROVIDER'] = settings.LOGIN_PROVIDER
-app.config['SHARED_SECRET'] = settings.SHARED_SECRET
 
 # xpaths for fields that need updating
 app.config['XPATH'] = {
@@ -46,11 +47,9 @@ def auth_required(f):
             return f(*args, **kwargs)
         elif app.config['ENV'] == 'development':
             session['username'] = 'devuser'
-            session['user_home'] = 'dev'
-            session['display_name'] = 'development user'
             return f(*args, **kwargs)
         else:
-            return redirect(app.config['LOGIN_PROVIDER'])
+            return redirect(url_for('login'))
     return decorated
 
 # error handlers
@@ -72,25 +71,24 @@ def page_not_found(e):
 def index():
     return render_template("index.html")
 
-@app.route('/login')
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    return redirect(app.config['login_provider'])
-
-@app.route('/login/n', methods=['GET'])
-def new_login():
-    session.clear()
-    if 'wrt' in request.cookies:
-        encoded_token =  request.cookies['wrt']
-        user_data = jwt.decode(encoded_token, app.config['SHARED_SECRET'], algorithms=['HS256'])
-        if 'scf_utils' in user_data['authorizations']:
-            session['username'] = user_data['primary_id']
-            session['user_home'] = user_data['inst']
-            session['display_name'] = user_data['full_name']
-            return redirect(url_for('index'))
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        response_code = _alma_authenticate(username, password)
+        if response_code == 204:
+            authorized = _alma_authorize(request.form['username'])
+            if authorized:
+                session['username'] = username
+                return redirect(url_for('index'))
+            else:
+                return abort(403)
         else:
-            abort(403)
+            flash('User not found, check username and password')
+            return redirect(url_for('login'))
     else:
-        return "no login cookie"
+        return render_template('login.html')
 
 @app.route('/logout')
 def logout():
@@ -112,7 +110,8 @@ def get_alt_call_input():
     barcode = request.form['barcode']
     # try to find the item in alma or return an error
     try:
-        item = _alma_get(app.config['API_HOST'] + app.config['GET_BY_BARCODE'].format(barcode))
+        item = _alma_get(app.config['API_HOST'] +
+                         app.config['GET_BY_BARCODE'].format(barcode))
     except requests.exceptions.RequestException as e:
         return e.args[0]
     item_record = item.decode(encoding='utf-8')
@@ -163,7 +162,8 @@ def get_int_note_input():
     barcode = request.form['barcode']
     # try to find the item in alma or return an error
     try:
-        item = _alma_get(app.config['API_HOST'] + app.config['GET_BY_BARCODE'].format(barcode))
+        item = _alma_get(app.config['API_HOST'] +
+                         app.config['GET_BY_BARCODE'].format(barcode))
     except requests.exceptions.RequestException as e:
         return e.args[0]
     item_record = item.decode(encoding='utf-8')
@@ -203,12 +203,37 @@ def fetch(item):
     return record
 
 # local functions
-def _alma_get(resource, params=None, fmt='xml'):
+def _alma_authenticate(username, password):
+    headers = {
+              'Authorization' : 'apikey ' + app.config['USERS_API_KEY'],
+              'Exl-User-Pw' : password
+             }
+    r = requests.post(app.config['API_HOST'] + app.config['USERS'].format(username),
+                      headers=headers)
+    return r.status_code
+
+def _alma_authorize(username):
+    r = _alma_get(app.config['API_HOST'] +
+                  app.config['USERS'].format(username), 
+                  api='users',
+                  fmt='json') 
+    if r['user_group']['value'] == app.config['AUTHORIZED_GROUP']:
+        return True
+    else:
+        return False
+
+def _alma_get(resource, params=None, api='bibs', fmt='xml'):
     '''
     makes a generic alma api call, pass in a resource
     '''
+    if api == 'bibs':
+        key = app.config['BIBS_API_KEY']
+    elif api == 'users':
+        key = app.config['USERS_API_KEY']
+    else:
+        abort(500)
     params = params or {}
-    params['apikey'] = app.config['API_KEY']
+    params['apikey'] = key
     params['format'] = fmt
     r = requests.get(resource, params=params) 
     r.raise_for_status()
@@ -225,7 +250,7 @@ def _alma_put(resource, payload=None, params=None, fmt='xml'):
     params = params or {}
     params['format'] = fmt
     headers = {'Content-type': 'application/xml',
-               'Authorization' : 'apikey ' + app.config['API_KEY']}
+               'Authorization' : 'apikey ' + app.config['BIBS_API_KEY']}
     r = requests.put(resource,
                      headers=headers,
                      params=params,
