@@ -38,7 +38,7 @@
 	{% block content %}{% endblock %}		  
 
         {% if 'username' in session: %}
-            <span class="text-muted">Logged in as: {{ session['display_name'] }}</span>
+            <span class="text-muted">Logged in as: {{ session['username'] }}</span>
         {% endif %}
     </div>
 <script
