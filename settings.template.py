@@ -1,9 +1,10 @@
 API_HOST = 'https://api-na.hosted.exlibrisgroup.com'
-API_KEY = 'api_key_here'
-INST = 'inst'
+BIBS_API_KEY = 'apikey_for_bibs_api'
+USERS_API_KEY = 'apikey_for_users_api'
+LOG_FILE = 'log/audit.log'
+SESSION_KEY = 'random_string'
+AUTHORIZED_GROUP = 'groupname'
+
+# api endpoints
 GET_BY_BARCODE = '/almaws/v1/items?item_barcode={}'
-# for jwt
-SHARED_SECRET = 'shared secret for jwt'
-# for sessions
-SESSION_KEY = 'random key here'
-LOGIN_PROVIDER = 'login provider url'
+USERS = '/almaws/v1/users/{}'
