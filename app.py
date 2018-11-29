@@ -27,6 +27,7 @@ app.config['XPATH'] = {
     'alt_call_type' : './/item_data/alternative_call_number_type',
     'barcode' : './/item_data/barcode',
     'int_note' : './/item_data/internal_note_1',
+    'material_type' : './/item_data/physical_material_type',
     'mms_id' : './/mms_id',
     'title' : './/title',
 }
@@ -274,13 +275,17 @@ def _parse_item(item_record):
 
 def _update_field(item_record, field, new_val):
     '''
-    updates a feild in marcxml record pass in record as xml,
+    updates a field in marcxml record pass in record as xml,
     field name to be updated (must also be configured in XPATH
     setting), and the new value the field should be updated to.
     '''
     item_root = _parse_item(item_record)
     # get id
     mms_id = item_root.find(app.config['XPATH']['mms_id']).text
+    # get barcode
+    barcode = item_root.find(app.config['XPATH']['barcode]).text
+    # get material type
+    material_type = item_root.find(app.config['XPATH']['material_type]).text
     # update field
     item_root.find(app.config['XPATH'][field]).text = new_val
     # if field is alt call, enforce alt call type
@@ -296,8 +301,9 @@ def _update_field(item_record, field, new_val):
 
     try:
         result = _alma_put(item_link, payload=updated_item)
-        audit_log.info('{operator}\t{mms_id}\t{type}\t{value}'.format(operator=session['username'],
-                                                                mms_id=mms_id,
+        audit_log.info('{operator}\t{barcode}\t{material_type}\t{type}\t{value}'.format(operator=session['username'],
+                                                                barcode=barcode,
+                                                                material_type=physical_material_type,                        
                                                                 type=field,
                                                                 value=new_val))
         return result
