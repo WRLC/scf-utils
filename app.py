@@ -53,6 +53,10 @@ def auth_required(f):
     return decorated
 
 # error handlers
+@app.errorhandler(400)
+def page_not_found(e):
+    return render_template('400.html'), 400
+
 @app.errorhandler(403)
 def page_not_found(e):
     return render_template('403.html'), 403
@@ -113,7 +117,7 @@ def get_alt_call_input():
         item = _alma_get(app.config['API_HOST'] +
                          app.config['GET_BY_BARCODE'].format(barcode))
     except requests.exceptions.RequestException as e:
-        return e.args[0]
+        abort(400)
     item_record = item.decode(encoding='utf-8')
     item_root = _parse_item(item_record)
     # grab some fields from retrieved item to show operator
@@ -165,7 +169,7 @@ def get_int_note_input():
         item = _alma_get(app.config['API_HOST'] +
                          app.config['GET_BY_BARCODE'].format(barcode))
     except requests.exceptions.RequestException as e:
-        return e.args[0]
+        abort(400)
     item_record = item.decode(encoding='utf-8')
     item_root = _parse_item(item_record)
     # grab some fields from retrieved item to show operator
@@ -302,7 +306,7 @@ def _update_field(item_record, field, new_val):
                                                                 value=new_val))
         return result
     except requests.exceptions.RequestException as e:
-        return e.args[0]
+        abort(400)
 
 
 def _enforce_call_type(item_root):
