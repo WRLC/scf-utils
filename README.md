@@ -15,8 +15,10 @@ cp settings.template.py settings.py
 ```
 ## Run (for development)
 ```
-FLAS_ENV=development python app.py
+FLASK_ENV=development python app.py
 ```
+## Deployment (for production)
+TBD
 
 ## Utilities
 ### /add-alt-call
