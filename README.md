@@ -18,7 +18,13 @@ cp settings.template.py settings.py
 FLASK_ENV=development python app.py
 ```
 ## Deployment (for production)
-TBD
+Clone this repository and setup on the production server. After configuring deactivate and configure and startup your application container.
+
+On WRLC servers this app runs in a Green Unicorn (Python WSGI HTTP Server) service. 
+```
+systemctl enable scf-utils.service
+```
+The daemon is started and stoped via systemd. The config is `/etc/systemd/system/scf-utils.service`
 
 ## Utilities
 ### /add-alt-call
