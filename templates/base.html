@@ -1,30 +1,30 @@
 <!DOCTYPE html>
 <html>
 <head>
-        <title>SCF UTILS</title>
-	<meta charset="utf-8">
-	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
+    <title>SCF Utilities</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
 </head>
 <body>
     <header class="header">
-	<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-	    <div class="collapse navbar-collapse" id="navbarText">
-    	        <ul class="navbar-nav mr-auto">
-                    <li class="nav-item active">
-       		        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
-		    </li>
-                    {% if 'username' in session: %}
-                    <li class="nav-item">
-       		        <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
-		    </li>
-                    {% else: %}
-                    <li class="nav-item">
-       		        <a class="nav-link" href="{{ url_for('login') }}">Login</a>
-		    </li>
-                    {% endif %}
-		</ul>
-	    </div>
-	</nav>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="collapse navbar-collapse" id="navbarText">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item active">
+                       <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+                </li>
+                {% if 'username' in session: %}
+                <li class="nav-item">
+                   <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                </li>
+                {% else: %}
+                <li class="nav-item">
+                   <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
     </header>
     <div class="container">
         {% with messages = get_flashed_messages() %}
@@ -35,7 +35,7 @@
           {% endif %}
         {% endwith %}
 
-	{% block content %}{% endblock %}		  
+    {% block content %}{% endblock %}          
 
         {% if 'username' in session: %}
             <span class="text-muted">Logged in as: {{ session['username'] }}</span>
